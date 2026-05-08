@@ -86,6 +86,37 @@ def crear_retencion(payload: RetencionCreate) -> RetencionCreatedResponse:
                 ),
             )
 
+        # ── Bump idempotente de UltimoValor en MaestroDocumentoSerie ──
+        # serienumero formato: "PNNN-XXXXXXXX" (ej. "R001-00000001")
+        #   prefijo P -> resuelve TipoDocumento via MaestroDocumento.PrefijoSerie
+        #   NNN      -> NumSerie (entero)
+        #   XXXXXXXX -> numero emitido
+        # El SP legacy SP_RETENCION_INSERT no toca MaestroDocumentoSerie, asi
+        # que lo hacemos aqui con un UPDATE inline (no SP) condicional para
+        # evitar pisar valores mas altos por concurrencia.
+        sn = payload.serienumero
+        if len(sn) >= 13 and sn[4] == "-":
+            try:
+                prefijo = sn[0]
+                num_serie = int(sn[1:4])
+                numero = int(sn[5:])
+            except ValueError:
+                prefijo = num_serie = numero = None
+            if num_serie and numero:
+                cur.execute(
+                    """
+                    UPDATE s
+                       SET UltimoValor = ?
+                      FROM dbo.MaestroDocumentoSerie s
+                INNER JOIN dbo.MaestroDocumento md
+                        ON md.TipoDocumento = s.TipoDocumento
+                     WHERE LTRIM(RTRIM(ISNULL(md.PrefijoSerie, ''))) = ?
+                       AND s.NumSerie = ?
+                       AND ISNULL(s.UltimoValor, 0) < ?;
+                    """,
+                    (numero, prefijo, num_serie, numero),
+                )
+
     return RetencionCreatedResponse(
         rucempresa=payload.rucempresa,
         serienumero=payload.serienumero,

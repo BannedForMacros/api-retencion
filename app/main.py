@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 
 from .config import parse_cors_origins, settings
 from .errors import parse as parse_sql_error
-from .routers import proveedores, retenciones
+from .routers import maestros, proveedores, retenciones
 
 logger = logging.getLogger("retenciones-datamarket")
 
@@ -59,3 +59,4 @@ def health() -> dict[str, str]:
 
 app.include_router(retenciones.router)
 app.include_router(proveedores.router)
+app.include_router(maestros.router)

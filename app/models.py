@@ -289,3 +289,40 @@ class FacturaProveedorListResponse(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+# ─── Series (MaestroDocumentoSerie) ──────────────────────────────────────────
+
+
+class SerieRow(BaseModel):
+    """Serie habilitada para emitir un tipo de documento."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    tipo_documento: int
+    num_serie: int
+    prefijo: str
+    serie_formateada: str = Field(..., description="Prefijo + 3 dígitos, ej. 'R001'")
+    ultimo_valor: int
+    ultimo_valor_market: int
+    ctr_resp: str | None = None
+    descripcion: str
+
+
+class SerieListResponse(BaseModel):
+    items: list[SerieRow]
+    tipo_documento: int
+
+
+class SerieCreateRequest(BaseModel):
+    tipo_documento: Annotated[int, Field(ge=1, le=255)]
+    num_serie: Annotated[int, Field(ge=1, le=9999)]
+    ctr_resp: Annotated[str, Field(max_length=10)] | None = None
+
+
+class SiguienteNumeroSerieResponse(BaseModel):
+    tipo_documento: int
+    num_serie: int
+    serie_formateada: str
+    ultimo_valor: int
+    siguiente_numero: str = Field(..., min_length=8, max_length=8, pattern=r"^\d{8}$")
