@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query, status
 
-from ..db import call_sp, row_to_dict, rows_to_dicts, transaction
+from ..db import call_sp, rows_to_dicts, transaction
 from ..models import (
     FacturaProveedorListResponse,
     FacturaProveedorRow,
@@ -92,22 +92,30 @@ def facturas_de_proveedor(
     response_model=SetAfectoRetencionResponse,
     summary="Marcar / desmarcar a un proveedor como afecto a retencion",
     description=(
-        "Actualiza la columna AfectoRetencion de MaestroProveedores. Devuelve el "
-        "estado final (ruc, afecto_retencion) tal como quedo en la base."
+        "Actualiza la columna AfectoRetencion de MaestroProveedores. SQL inline "
+        "(no usa SP). Si el RUC no existe responde 404."
     ),
 )
 def set_afecto_retencion(
     ruc: str,
     payload: SetAfectoRetencionInput,
 ) -> SetAfectoRetencionResponse:
+    sql_update = """
+        UPDATE dbo.MaestroProveedores
+           SET AfectoRetencion    = ?,
+               UsuarioModificador = ?,
+               FechaModificacion  = GETDATE()
+         WHERE LTRIM(RTRIM(RUC)) = ?;
+    """
+    # UsuarioModificador es varchar(15) en la tabla, truncamos por las dudas.
+    usuario = payload.usuariomodificador[:15]
     with transaction() as cnx:
         cur = cnx.cursor()
-        call_sp(
-            cur,
-            "dbo.SP_PROVEEDOR_SET_AFECTO_RETENCION",
-            (ruc, 1 if payload.afecto else 0, payload.usuariomodificador),
-        )
-        row = row_to_dict(cur)
+        cur.execute(sql_update, (1 if payload.afecto else 0, usuario, ruc))
+        if cur.rowcount == 0:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Proveedor {ruc} no encontrado",
+            )
 
-    afecto = bool(row["afecto_retencion"]) if row and "afecto_retencion" in row else payload.afecto
-    return SetAfectoRetencionResponse(ruc=ruc, afecto_retencion=afecto)
+    return SetAfectoRetencionResponse(ruc=ruc, afecto_retencion=payload.afecto)

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-NetTCPConnection *)",
+      "Bash(.venv\\\\Scripts\\\\python.exe _inspect_db.py)",
+      "PowerShell(Set-Location \"C:\\\\Users\\\\Usuario\\\\Desktop\\\\Proyectos-002\\\\Proyectos\\\\retenciones-datamarket\"; $env:PYTHONIOENCODING=\"utf-8\"; .\\\\.venv\\\\Scripts\\\\python.exe _inspect_db.py)"
+    ]
+  }
+}
