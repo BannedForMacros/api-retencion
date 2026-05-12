@@ -252,6 +252,7 @@ class ProveedorRow(BaseModel):
     ruc: str
     razon_social: str
     direccion: str = ""
+    afecto_retencion: bool = False
 
 
 class ProveedorListResponse(BaseModel):
@@ -259,6 +260,18 @@ class ProveedorListResponse(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class SetAfectoRetencionInput(BaseModel):
+    """Marca / desmarca a un proveedor como afecto a retencion."""
+
+    afecto: bool
+    usuariomodificador: Usuario
+
+
+class SetAfectoRetencionResponse(BaseModel):
+    ruc: str
+    afecto_retencion: bool
 
 
 # ─── Facturas de proveedor (para el selector de retencion) ───────────────────

@@ -1,11 +1,13 @@
 from fastapi import APIRouter, Query
 
-from ..db import call_sp, rows_to_dicts, transaction
+from ..db import call_sp, row_to_dict, rows_to_dicts, transaction
 from ..models import (
     FacturaProveedorListResponse,
     FacturaProveedorRow,
     ProveedorListResponse,
     ProveedorRow,
+    SetAfectoRetencionInput,
+    SetAfectoRetencionResponse,
 )
 
 router = APIRouter(prefix="/proveedores", tags=["proveedores"])
@@ -83,3 +85,29 @@ def facturas_de_proveedor(
         limit=limit,
         offset=offset,
     )
+
+
+@router.patch(
+    "/{ruc}/afecto-retencion",
+    response_model=SetAfectoRetencionResponse,
+    summary="Marcar / desmarcar a un proveedor como afecto a retencion",
+    description=(
+        "Actualiza la columna AfectoRetencion de MaestroProveedores. Devuelve el "
+        "estado final (ruc, afecto_retencion) tal como quedo en la base."
+    ),
+)
+def set_afecto_retencion(
+    ruc: str,
+    payload: SetAfectoRetencionInput,
+) -> SetAfectoRetencionResponse:
+    with transaction() as cnx:
+        cur = cnx.cursor()
+        call_sp(
+            cur,
+            "dbo.SP_PROVEEDOR_SET_AFECTO_RETENCION",
+            (ruc, 1 if payload.afecto else 0, payload.usuariomodificador),
+        )
+        row = row_to_dict(cur)
+
+    afecto = bool(row["afecto_retencion"]) if row and "afecto_retencion" in row else payload.afecto
+    return SetAfectoRetencionResponse(ruc=ruc, afecto_retencion=afecto)
